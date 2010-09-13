@@ -295,6 +295,14 @@ WITH-POINTER-TO-VECTOR-DATA."
 (defun %load-foreign-library (name path)
   "Load the foreign library NAME."
   (declare (ignore name))
+  #+darwin-target
+  (let* ((s (make-semaphore)))
+    (process-interrupt ccl::*initial-process*
+                       (lambda ()
+                         (open-shared-library path)
+                         (signal-semaphore s)))
+    (wait-on-semaphore s))
+  #-darwin-target
   (open-shared-library path))
 
 (defun %close-foreign-library (name)

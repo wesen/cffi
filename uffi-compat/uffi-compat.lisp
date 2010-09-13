@@ -124,31 +124,12 @@
            ;; this is imho gross but it is what uffi does
            (quote (convert-uffi-type (second uffi-type)))
            (* :pointer)
-           (:array `(uffi-array ,(convert-uffi-type (second uffi-type))
+           (:array `(:array ,(convert-uffi-type (second uffi-type))
                                 ,(third uffi-type)))
            (:union (second uffi-type))
            (:struct (convert-uffi-type (second uffi-type)))
            (:struct-pointer :pointer))
          uffi-type))))
-
-(cffi:define-foreign-type uffi-array-type ()
-  ;; ELEMENT-TYPE should be /unparsed/, suitable for passing to mem-aref.
-  ((element-type :initform (error "An element-type is required.")
-                 :accessor element-type :initarg :element-type)
-   (nelems :initform (error "nelems is required.")
-           :accessor nelems :initarg :nelems))
-  (:actual-type :pointer)
-  (:documentation "UFFI's :array type."))
-
-(cffi:define-parse-method uffi-array (element-type count)
-  (make-instance 'uffi-array-type :element-type element-type
-                 :nelems (or count 1)))
-
-(defmethod cffi:foreign-type-size ((type uffi-array-type))
-  (* (cffi:foreign-type-size (element-type type)) (nelems type)))
-
-(defmethod cffi::aggregatep ((type uffi-array-type))
-  t)
 
 ;; UFFI's :(unsigned-)char
 #+#:ignore
@@ -219,7 +200,8 @@ field-name"
   `(cffi:defcstruct ,name
      ,@(loop for (name uffi-type) in fields
              for cffi-type = (convert-uffi-type uffi-type)
-             collect (list name cffi-type))))
+          collect (list name cffi-type)
+            )))
 
 ;; TODO: figure out why the compiler macro is kicking in before
 ;; the setf expander.
@@ -242,15 +224,15 @@ field-name"
 
 (defmacro def-array-pointer (name type)
   "Define a foreign array type."
-  `(cffi:defctype ,name (uffi-array ,(convert-uffi-type type) 1)))
+  `(cffi:defctype ,name (:array ,(convert-uffi-type type) 1)))
 
 (defmacro deref-array (array type position)
   "Dereference an array."
   `(cffi:mem-aref ,array
                   ,(if (constantp type)
-                       `',(element-type (cffi::parse-type
+                       `',(cffi::element-type (cffi::parse-type
                                          (convert-uffi-type (eval type))))
-                       `(element-type (cffi::parse-type
+                       `(cffi::element-type (cffi::parse-type
                                        (convert-uffi-type ,type))))
                   ,position))
 
