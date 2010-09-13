@@ -23,3 +23,5 @@ doc/*.vr
 doc/*.dvi
 doc/*.cps
 doc/*.vrs
+.svn
+*fsl
